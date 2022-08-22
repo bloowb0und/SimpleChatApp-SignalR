@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp-SignalR.Server", "SimpleChatApp-SignalR\Server\SimpleChatApp-SignalR.Server.csproj", "{E4E23502-FC13-41C5-8E52-29BC876D5CC7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp_SignalR.Server", "SimpleChatApp-SignalR\Server\SimpleChatApp_SignalR.Server.csproj", "{E4E23502-FC13-41C5-8E52-29BC876D5CC7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp-SignalR.Client", "SimpleChatApp-SignalR\Client\SimpleChatApp-SignalR.Client.csproj", "{E51F4BBE-4F71-4940-BB84-0D6D1CFBFA61}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp_SignalR.Client", "SimpleChatApp-SignalR\Client\SimpleChatApp_SignalR.Client.csproj", "{E51F4BBE-4F71-4940-BB84-0D6D1CFBFA61}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp-SignalR.Shared", "SimpleChatApp-SignalR\Shared\SimpleChatApp-SignalR.Shared.csproj", "{050780CD-11F7-4516-9ABC-E37D2BEED5D6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleChatApp_SignalR.Shared", "SimpleChatApp-SignalR\Shared\SimpleChatApp_SignalR.Shared.csproj", "{050780CD-11F7-4516-9ABC-E37D2BEED5D6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
