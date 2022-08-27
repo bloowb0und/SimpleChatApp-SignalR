@@ -21,6 +21,11 @@ public class ChatHub : Hub
 
         var chat = await _chatContext.Chats.FirstOrDefaultAsync(c => c.Id == message.ChatId);
         var user = await _chatContext.Users.FirstOrDefaultAsync(u => u.Id == message.UserId);
+        User? repliedUser = null;
+        if (message.RepliedUserId is not null)
+        {
+            repliedUser = await _chatContext.Users.FirstOrDefaultAsync(u => u.Id == message.RepliedUserId);
+        }
 
         if (chat is null || user is null)
         {
@@ -33,7 +38,9 @@ public class ChatHub : Hub
             DateCreated = message.DateCreated,
             DateLastEdited = message.DateLastEdited,
             Chat = chat,
-            User = user
+            User = user,
+            RepliedUser = repliedUser,
+            VisibleToSender = message.VisibleToSender
         });
         
         await _chatContext.SaveChangesAsync();

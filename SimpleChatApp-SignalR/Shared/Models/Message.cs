@@ -4,9 +4,12 @@ namespace SimpleChatApp_SignalR.Shared.Models;
 
 public class Message : BaseEntity
 {
+    [Required] 
+    public bool VisibleToSender { get; set; }
+    
     [Required]
     public User User { get; set; }
-    
+
     [Required]
     public Chat Chat { get; set; }
     
@@ -17,4 +20,6 @@ public class Message : BaseEntity
     public DateTime DateCreated { get; set; }
     
     public DateTime? DateLastEdited { get; set; }
+
+    public User? RepliedUser { get; set; }
 }

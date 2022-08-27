@@ -90,7 +90,7 @@ namespace SimpleChatApp_SignalR.Server.Controllers
             
             var firstNMessages = foundChat.Messages
                 .OrderByDescending(m => m.Id)
-                .Take(amountOfMessages);
+                .Take(amountOfMessages + 1);
 
             return Ok(firstNMessages.Select(c => new MessageDTO()
             {
@@ -100,7 +100,10 @@ namespace SimpleChatApp_SignalR.Server.Controllers
                 DateLastEdited = c.DateLastEdited,
                 ChatId = c.Chat.Id,
                 UserId = c.User.Id,
-                SenderUsername = c.User.Username
+                SenderUsername = c.User.Username,
+                RepliedUserId = c.RepliedUser?.Id,
+                RepliedUserUsername = c.RepliedUser?.Username,
+                VisibleToSender = c.VisibleToSender
             }));
         }
     }
