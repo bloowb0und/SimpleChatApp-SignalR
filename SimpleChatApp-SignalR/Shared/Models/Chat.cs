@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SimpleChatApp_SignalR.Server.EF.Models;
+namespace SimpleChatApp_SignalR.Shared.Models;
 
 public class Chat : BaseEntity
 {

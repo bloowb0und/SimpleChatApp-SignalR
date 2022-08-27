@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SimpleChatApp_SignalR.Server.EF.Models;
+using SimpleChatApp_SignalR.Shared.Models;
 
 namespace SimpleChatApp_SignalR.Server.EF;
 

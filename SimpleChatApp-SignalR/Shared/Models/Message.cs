@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SimpleChatApp_SignalR.Server.EF.Models;
+namespace SimpleChatApp_SignalR.Shared.Models;
 
 public class Message : BaseEntity
 {
@@ -15,6 +15,6 @@ public class Message : BaseEntity
     
     [Required] 
     public DateTime DateCreated { get; set; }
-    [Required] 
+    
     public DateTime? DateLastEdited { get; set; }
 }
