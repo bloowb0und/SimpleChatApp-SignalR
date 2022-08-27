@@ -72,7 +72,6 @@ namespace SimpleChatApp_SignalR.Server.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DateLastEdited")
-                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
