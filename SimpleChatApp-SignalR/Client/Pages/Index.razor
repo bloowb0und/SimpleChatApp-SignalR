@@ -90,10 +90,18 @@ else
                 <nav class="flex-column">
                     @foreach (var chat in _chatList)
                     {
-                        <div class="nav-item px-3 @(_currentChat?.Id == chat.Id ? "text-decoration-underline fw-bold" : "")">
-                            <NavLink class="nav-link" style="cursor: pointer;" Match="NavLinkMatch.All" @onclick="() => SetCurrentChat(chat)">
-                                <span class="oi @(chat.IsPrivate ? "oi-person" : "oi-people")" aria-hidden="true"></span> @chat.Title
-                            </NavLink>
+                        <div class="nav-item px-3">
+                            @if (_chatHasNotification.FirstOrDefault(cn => cn.Key == chat.Id).Value ?? false)
+                            {
+                                <div class="position-relative border border-danger rounded-circle bg-danger text-center" style="width: 15px; left: 0px; height: 15px;">
+                                </div>
+                            }
+                            <div class="@((_chatHasNotification.FirstOrDefault(cn => cn.Key == chat.Id).Value ?? false) ? "notificated" : "") @(chat.Id == _currentChat?.Id ? "border rounded border-2" : "")">
+                                <NavLink class="nav-link"
+                                         style="cursor: pointer;" Match="NavLinkMatch.All" @onclick="() => SetCurrentChat(chat)">
+                                    <span class="oi @(chat.IsPrivate ? "oi-person" : "oi-people")" aria-hidden="true"></span> @chat.Title
+                                </NavLink>
+                            </div>
                         </div>
                     }
                 </nav>
@@ -103,7 +111,7 @@ else
         <main style="margin-left: 250px; margin-top: -960px;">
             <div class="top-row px-4 justify-content-between">
                 <p class="mb-0 font-weight-bold">@_currentChat?.Title</p>
-                <a href="#" target="_blank" class="text-decoration-underline">@(_currentUser?.Username)</a>
+                <a href="" target="_blank" class="text-decoration-underline">@(_currentUser?.Username)</a>
             </div>
 
             <article class="px-4 mt-md-3">
@@ -224,6 +232,7 @@ else
     private ChatDTO? _currentChat = null;
 
     private List<ChatDTO> _chatList = new List<ChatDTO>();
+    private Dictionary<int?, bool?> _chatHasNotification = new Dictionary<int?, bool?>();
 
     private HubConnection? _hubConnection;
     private List<MessageDTO> _messages = new();
@@ -286,15 +295,48 @@ else
             {
                 _messages.Add(message);
             }
-
-            // if (chats.Any(c => c.Id == message.ChatId))
-            // {
-            //     // todo: make notification for 
-            // }
+            else if (chats.Any(c => c.Id == message.ChatId))
+            {
+                _chatHasNotification.Add(message.ChatId, true);
+            }
 
             StateHasChanged();
             await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
             StateHasChanged();
+        });
+
+        _hubConnection.On<MessageDTO>("ReceiveEditedMessage", async (message) =>
+        {
+            if (message.ChatId == _currentChat?.Id)
+            {
+                var idx = _messages.FindIndex(m => m.Id == message.Id);
+                _messages[idx] = message;
+            }
+            
+            StateHasChanged();
+        });
+        
+        _hubConnection.On<MessageDTO>("ReceiveDeletedMessage", async (message) =>
+        {
+            if (message.ChatId == _currentChat?.Id)
+            {
+                if (message.VisibleToSender || _currentUser.Id == message.UserId)
+                {
+                    var idx = _messages.FindIndex(m => m.Id == message.Id);
+                    _messages.RemoveAt(idx);
+                }
+            }
+            
+            StateHasChanged();
+        });
+
+        _hubConnection.On<ChatDTO>("ReceiveCreatedChat", async (chat) =>
+        {
+            if (chat.UsersIds.Any(u => u == _currentUser.Id))
+            {
+                _chatList.Add(chat);
+                StateHasChanged();
+            }
         });
 
         await _hubConnection.StartAsync();
@@ -360,17 +402,13 @@ else
             return;
         }
 
-        var idx = _messages.FindIndex(m => m.Id == oldMessage.Id);
-        if (visibleToSender)
-        {
-            _messages.RemoveAt(idx);
-        }
-        else
-        {
-            oldMessage.VisibleToSender = visibleToSender;
-            _messages[idx] = oldMessage;
-        }
+        oldMessage.VisibleToSender = visibleToSender;
         
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.SendAsync("DeleteMessage", oldMessage);
+        }
+
         StateHasChanged();
     }
 
@@ -391,12 +429,15 @@ else
             return;
         }
 
-        var idx = _messages.FindIndex(m => m.Id == _currentEditedMessage.Id);
-        _messages[idx] = _currentEditedMessage;
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.SendAsync("EditMessage", _currentEditedMessage);
+        }
+
         _currentEditedMessage = null;
         _isEditingMessage = false;
-        
         _messageInput = string.Empty;
+        
         StateHasChanged();
     }
     
@@ -428,7 +469,12 @@ else
             }
 
             createdChat = await response.Content.ReadFromJsonAsync<ChatDTO>();
-            _chatList.Add(createdChat);
+            
+            if (_hubConnection is not null)
+            {
+                await _hubConnection.SendAsync("CreateChat", createdChat);
+            }
+            // _chatList.Add(createdChat);
         
             if (createdChat is null)
             {
@@ -444,6 +490,7 @@ else
     private async Task SetCurrentChat(ChatDTO chatDto)
     {
         _currentChat = chatDto;
+        _chatHasNotification.Remove(_currentChat.Id);
         var messages = await Http.GetFromJsonAsync<IEnumerable<MessageDTO>>($"api/Chat/messages/{_currentChat.Id}/{_defaultMessageAmount}");
 
         if (messages is null)

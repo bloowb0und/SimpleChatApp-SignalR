@@ -17,8 +17,6 @@ public class ChatHub : Hub
     
     public async Task SendMessage(MessageDTO message)
     {
-        await Clients.All.SendAsync("ReceiveMessage", message);
-
         var chat = await _chatContext.Chats.FirstOrDefaultAsync(c => c.Id == message.ChatId);
         var user = await _chatContext.Users.FirstOrDefaultAsync(u => u.Id == message.UserId);
         User? repliedUser = null;
@@ -31,8 +29,8 @@ public class ChatHub : Hub
         {
             return;
         }
-        
-        await _chatContext.Messages.AddAsync(new Message()
+
+        var createdMsg = new Message()
         {
             Value = message.Value,
             DateCreated = message.DateCreated,
@@ -41,8 +39,26 @@ public class ChatHub : Hub
             User = user,
             RepliedUser = repliedUser,
             VisibleToSender = message.VisibleToSender
-        });
-        
+        };
+        await _chatContext.Messages.AddAsync(createdMsg);
         await _chatContext.SaveChangesAsync();
+
+        message.Id = createdMsg.Id;
+        await Clients.All.SendAsync("ReceiveMessage", message);
+    }
+
+    public async Task EditMessage(MessageDTO message)
+    {
+        await Clients.All.SendAsync("ReceiveEditedMessage", message);
+    }
+    
+    public async Task DeleteMessage(MessageDTO message)
+    {
+        await Clients.All.SendAsync("ReceiveDeletedMessage", message);
+    }
+    
+    public async Task CreateChat(ChatDTO chat)
+    {
+        await Clients.All.SendAsync("ReceiveCreatedChat", chat);
     }
 }
