@@ -5,7 +5,7 @@
 @using SimpleChatApp_SignalR.Shared.Models
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
-@inject IJSRuntime _jsRuntime
+@inject IJSRuntime JsRuntime
 @implements IAsyncDisposable
 @inherits LayoutComponentBase
 
@@ -33,7 +33,7 @@
                         <h2 class="fw-bold mb-5">Log into your account</h2>
                         <form>
                             <div class="form-floating mb-3">
-                                <input type="email" id="form2Example1" class="form-control" placeholder="Username" @bind="_username"/>
+                                <input type="text" id="form2Example1" class="form-control" placeholder="Username" @bind="_username"/>
                                 <label class="form-label" for="form2Example1">Username</label>
                             </div>
               
@@ -93,7 +93,7 @@ else
                         <div class="nav-item px-3">
                             @if (_chatHasNotification.FirstOrDefault(cn => cn.Key == chat.Id).Value ?? false)
                             {
-                                <div class="position-relative border border-danger rounded-circle bg-danger text-center" style="width: 15px; left: 0px; height: 15px;">
+                                <div class="position-relative border border-danger rounded-circle bg-danger text-center" style="width: 15px; left: 0; height: 15px;">
                                 </div>
                             }
                             <div class="@((_chatHasNotification.FirstOrDefault(cn => cn.Key == chat.Id).Value ?? false) ? "notificated" : "") @(chat.Id == _currentChat?.Id ? "border rounded border-2" : "")">
@@ -245,7 +245,7 @@ else
         if (string.IsNullOrWhiteSpace(_username)
             || string.IsNullOrWhiteSpace(_password))
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", "Fill in all blocks.");
             return;
         }
 
@@ -260,7 +260,7 @@ else
 
         if (response.StatusCode != HttpStatusCode.OK)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", await response.Content.ReadAsStringAsync());
             return;
         }
 
@@ -268,7 +268,7 @@ else
         
         if (_currentUser is null)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", "Error has just happened! Please, restart the page.");
             return;
         }
         
@@ -276,7 +276,7 @@ else
         
         if (chats is null)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", "Error has just happened! Please, restart the page.");
             return;
         }
         
@@ -301,11 +301,11 @@ else
             }
 
             StateHasChanged();
-            await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+            await JsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
             StateHasChanged();
         });
 
-        _hubConnection.On<MessageDTO>("ReceiveEditedMessage", async (message) =>
+        _hubConnection.On<MessageDTO>("ReceiveEditedMessage", (message) =>
         {
             if (message.ChatId == _currentChat?.Id)
             {
@@ -316,7 +316,7 @@ else
             StateHasChanged();
         });
         
-        _hubConnection.On<MessageDTO>("ReceiveDeletedMessage", async (message) =>
+        _hubConnection.On<MessageDTO>("ReceiveDeletedMessage", (message) =>
         {
             if (message.ChatId == _currentChat?.Id)
             {
@@ -330,7 +330,7 @@ else
             StateHasChanged();
         });
 
-        _hubConnection.On<ChatDTO>("ReceiveCreatedChat", async (chat) =>
+        _hubConnection.On<ChatDTO>("ReceiveCreatedChat", (chat) =>
         {
             if (chat.UsersIds.Any(u => u == _currentUser.Id))
             {
@@ -341,7 +341,7 @@ else
 
         await _hubConnection.StartAsync();
         _isLogged = true;
-        await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+        await JsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
         StateHasChanged();
     }
 
@@ -368,6 +368,10 @@ else
             
             _repliedUser = null;
             _messageInput = string.Empty;
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "Empty message can not be sent!");
         }
     }
 
@@ -398,7 +402,7 @@ else
         
         if (!response.IsSuccessStatusCode)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", await response.Content.ReadAsStringAsync());
             return;
         }
 
@@ -425,7 +429,7 @@ else
 
         if (!response.IsSuccessStatusCode)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", await response.Content.ReadAsStringAsync());
             return;
         }
 
@@ -464,7 +468,7 @@ else
 
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                // todo: make alert
+                await JsRuntime.InvokeVoidAsync("alert", await response.Content.ReadAsStringAsync());
                 return;
             }
 
@@ -474,11 +478,10 @@ else
             {
                 await _hubConnection.SendAsync("CreateChat", createdChat);
             }
-            // _chatList.Add(createdChat);
-        
+
             if (createdChat is null)
             {
-                // todo: make alert
+                await JsRuntime.InvokeVoidAsync("alert", "Error has just happened! Please, restart the page.");
                 return;
             }
 
@@ -495,7 +498,7 @@ else
 
         if (messages is null)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", "Error has just happened! Please, restart the page.");
             return;
         }
         
@@ -507,7 +510,7 @@ else
         _messages = messages.OrderBy(m => m.DateCreated).Skip(1).ToList();
         
         StateHasChanged();
-        await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+        await JsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
         StateHasChanged();
     }
     
@@ -519,7 +522,7 @@ else
 
         if (messagesResponse is null)
         {
-            // todo: make alert
+            await JsRuntime.InvokeVoidAsync("alert", "Error has just happened! Please, restart the page.");
             return;
         }
 
