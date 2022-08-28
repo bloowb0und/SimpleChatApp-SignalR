@@ -106,5 +106,51 @@ namespace SimpleChatApp_SignalR.Server.Controllers
                 VisibleToSender = c.VisibleToSender
             }));
         }
+
+        [HttpPost("create")]
+        public async Task<ActionResult<ChatDTO>> CreateChat([FromBody] ChatDTO chatDto)
+        {
+            if (chatDto is null)
+            {
+                return BadRequest("Incoming data has wrong format.");
+            }
+
+            var foundChat = await _chatContext.Chats.FirstOrDefaultAsync(c => c.Title == chatDto.Title);
+
+            if (foundChat is not null)
+            {
+                return BadRequest("Chat already exists.");
+            }
+
+            var users = new List<User>();
+            foreach (var userId in chatDto.UsersIds)
+            {
+                var foundUser = await _chatContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (foundUser is not null)
+                {
+                    users.Add(foundUser);
+                }
+            }
+
+
+            var createdChat = new Chat()
+            {
+                Title = chatDto.Title,
+                IsPrivate = chatDto.IsPrivate,
+                Users = users,
+                Messages = new List<Message>()
+            };
+
+            await _chatContext.Chats.AddAsync(createdChat);
+            await _chatContext.SaveChangesAsync();
+            return Ok(new ChatDTO()
+            {
+                Id = createdChat.Id,
+                IsPrivate = createdChat.IsPrivate,
+                Title = createdChat.Title,
+                MessagesIds = createdChat.Messages.Select(m => m.Id),
+                UsersIds = createdChat.Users.Select(u => u.Id)
+            });
+        }
     }
 }

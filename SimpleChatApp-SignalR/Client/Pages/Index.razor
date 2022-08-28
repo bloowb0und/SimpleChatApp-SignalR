@@ -5,6 +5,7 @@
 @using SimpleChatApp_SignalR.Shared.Models
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
+@inject IJSRuntime _jsRuntime
 @implements IAsyncDisposable
 @inherits LayoutComponentBase
 
@@ -76,7 +77,6 @@ else
 {
     <section>
         <div class="sidebar" style="width: 250px;">
-            @* <NavMenu ChatList="_chatList ?? new List<ChatDTO>()"/> *@
             <div class="logo-row ps-3 navbar navbar-dark">
                 <div class="container-fluid">
                     <a class="navbar-brand" href="">Simple Chat</a>
@@ -107,12 +107,21 @@ else
             </div>
 
             <article class="px-4 mt-md-3">
-                <div class="container overflow-auto shadow-sm p-3 mb-4 bg-white rounded" style="height: 720px">
+                <div id="chatContainer" class="container overflow-auto shadow-sm p-3 mb-4 bg-white rounded" style="height: 720px">
                     @if (!_messages.Any())
                     {
                         <p>Be first to send a message in this chat!</p>
                     }
-    
+                    else if(_chatHasMoreMessages)
+                    {
+                        <div
+                            class="bg-white border border-3 border-primary p-2 text-primary small fw-bold col-3 text-center mx-auto mb-3"
+                            style="z-index: 1; cursor: pointer; border-radius: 30px;"
+                            @onclick="LoadPreviousMessages">
+                                Load previous messages...
+                        </div>
+                    }
+
                     @foreach (var message in _messages)
                     {
                         @if (message.VisibleToSender || message.SenderUsername != _currentUser?.Username)
@@ -204,6 +213,8 @@ else
     private string? _password;
 
     private readonly int _defaultMessageAmount = 20;
+    private int _currentChatPageNum = 1;
+    private bool _chatHasMoreMessages = false;
     
     private bool _isEditingMessage;
     private MessageDTO? _currentEditedMessage = null;
@@ -269,7 +280,7 @@ else
             .WithUrl(NavigationManager.ToAbsoluteUri($"/chathub"))
             .Build();
 
-        _hubConnection.On<MessageDTO>("ReceiveMessage", (message) =>
+        _hubConnection.On<MessageDTO>("ReceiveMessage", async (message) =>
         {
             if (message.ChatId == _currentChat?.Id)
             {
@@ -282,10 +293,14 @@ else
             // }
 
             StateHasChanged();
+            await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+            StateHasChanged();
         });
 
         await _hubConnection.StartAsync();
         _isLogged = true;
+        await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+        StateHasChanged();
     }
 
     private async Task Send()
@@ -385,17 +400,50 @@ else
         StateHasChanged();
     }
     
-    private void ReplyToPrivate(MessageDTO message)
+    private async Task ReplyToPrivate(MessageDTO message)
     {
-        throw new NotImplementedException();
-    }
+        ChatDTO? foundChat = null;
+        if ((foundChat = _chatList.FirstOrDefault(c => c.UsersIds.Any(chatUsers => chatUsers == message.UserId)
+                               && c.UsersIds.Any(chatUsers => chatUsers == _currentUser?.Id)
+                               && c.IsPrivate)) is not null)
+        {
+            await SetCurrentChat(foundChat);
+        }
+        else
+        {
+            var createdChat = new ChatDTO()
+            {
+                IsPrivate = true,
+                Title = $"{_currentUser?.Username}_{message.SenderUsername}",
+                UsersIds = new int[2] {_currentUser.Id, message.UserId},
+                MessagesIds = new List<int>()
+            };
+            
+            var response = await Http.PostAsJsonAsync("api/Chat/create", createdChat);
 
-    // Navbar code
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                // todo: make alert
+                return;
+            }
+
+            createdChat = await response.Content.ReadFromJsonAsync<ChatDTO>();
+            _chatList.Add(createdChat);
+        
+            if (createdChat is null)
+            {
+                // todo: make alert
+                return;
+            }
+
+            await SetCurrentChat(createdChat);
+            StateHasChanged();
+        }
+    }
     
     private async Task SetCurrentChat(ChatDTO chatDto)
     {
         _currentChat = chatDto;
-        // todo: load messages from api to message list
         var messages = await Http.GetFromJsonAsync<IEnumerable<MessageDTO>>($"api/Chat/messages/{_currentChat.Id}/{_defaultMessageAmount}");
 
         if (messages is null)
@@ -405,7 +453,42 @@ else
         }
         
         _messages.Clear();
-        _messages = messages.OrderBy(m => m.DateCreated).ToList();
+        _currentChatPageNum = 1;
+
+        _chatHasMoreMessages = messages.Count() > _defaultMessageAmount * _currentChatPageNum;
+        
+        _messages = messages.OrderBy(m => m.DateCreated).Skip(1).ToList();
+        
+        StateHasChanged();
+        await _jsRuntime.InvokeAsync<string>("ScrollToBottom", "chatContainer");
+        StateHasChanged();
+    }
+    
+    private async Task LoadPreviousMessages()
+    {
+        _currentChatPageNum++;
+        
+        var messagesResponse = await Http.GetFromJsonAsync<IEnumerable<MessageDTO>>($"api/Chat/messages/{_currentChat.Id}/{_defaultMessageAmount * _currentChatPageNum}");
+
+        if (messagesResponse is null)
+        {
+            // todo: make alert
+            return;
+        }
+
+        var messagesResponseList = messagesResponse.ToList();
+        _messages.Clear();
+        
+        _chatHasMoreMessages = messagesResponseList.Count > _defaultMessageAmount * _currentChatPageNum;
+        messagesResponseList = messagesResponseList.OrderBy(m => m.DateCreated).ToList();
+        
+        if (_chatHasMoreMessages)
+        {
+            messagesResponseList = messagesResponseList.Skip(1).ToList();
+        }
+        
+        _messages = messagesResponseList;
+        StateHasChanged();
     }
     
     // navMenu base code
